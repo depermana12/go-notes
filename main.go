@@ -39,23 +39,25 @@ func init() {
 func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	r.Use(jwtauth.Verifier(tokenAuth))
-
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("hello world!"))
-	})
 
 	// public routes
 	r.Route("/api/v1/auth", func(r chi.Router) {
 		r.Post("/register", createUser)
+		r.Post("/login", login)
 	})
 
-	r.Route("/api/v1/note", func(r chi.Router) {
-		r.Get("/", listNotes)
-		r.Get("/{id}", getNoteByID)
-		r.Post("/", createNote)
-		r.Put("/{id}", updateNote)
-		r.Delete("/{id}", deleteNote)
+	// protected route
+	r.Group(func(r chi.Router) {
+		r.Use(jwtauth.Verifier(tokenAuth))
+		r.Use(jwtauth.Authenticator(tokenAuth))
+
+		r.Route("/api/v1/note", func(r chi.Router) {
+			r.Get("/", listNotes)
+			r.Get("/{id}", getNoteByID)
+			r.Post("/", createNote)
+			r.Put("/{id}", updateNote)
+			r.Delete("/{id}", deleteNote)
+		})
 	})
 
 	log.Println("server listening to port 3000")
@@ -86,9 +88,15 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, tokenString, _ := tokenAuth.Encode(map[string]interface{}{
+		"user_id":  user.ID,
+		"username": user.Username,
+	})
+
 	response := map[string]interface{}{
 		"message": "user created",
 		"data":    user,
+		"token":   tokenString,
 	}
 
 	if err = JSONResponse(w, http.StatusCreated, response); err != nil {
@@ -107,15 +115,22 @@ func JSONResponse(w http.ResponseWriter, statusCode int, value any) error {
 func createNote(w http.ResponseWriter, r *http.Request) {
 	var note models.Note
 
-	err := json.NewDecoder(r.Body).Decode(&note)
+	_, claims, _ := jwtauth.FromContext(r.Context())
+	userId, ok := claims["user_id"].(float64)
+	if !ok {
+		http.Error(w, "invalid user id", http.StatusUnauthorized)
+		return
+	}
 
+	err := json.NewDecoder(r.Body).Decode(&note)
 	if err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
-	err = DB.Create(&note).Error
+	note.AuthorId = uint(userId)
 
+	err = DB.Create(&note).Error
 	if err != nil {
 		http.Error(w, "failed to create note", http.StatusBadRequest)
 	}
@@ -128,6 +143,10 @@ func createNote(w http.ResponseWriter, r *http.Request) {
 	if err = JSONResponse(w, http.StatusCreated, response); err != nil {
 		log.Printf("error sending json response %v", err)
 	}
+}
+
+func login(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("user logged in"))
 }
 
 func listNotes(w http.ResponseWriter, r *http.Request) {
