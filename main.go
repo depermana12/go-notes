@@ -7,13 +7,18 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/jwtauth/v5"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
 	"github.com/depermana12/go-notes/config"
 	"github.com/depermana12/go-notes/models"
 )
 
-var DB *gorm.DB
+var (
+	DB        *gorm.DB
+	tokenAuth *jwtauth.JWTAuth
+)
 
 func init() {
 	var err error
@@ -27,11 +32,14 @@ func init() {
 		log.Fatal("failed to migrate schema to database", err)
 	}
 
+	tokenAuth = jwtauth.New("HS256", []byte("mie-ayam"), nil)
+
 }
 
 func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Use(jwtauth.Verifier(tokenAuth))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("hello world!"))
@@ -63,6 +71,14 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), 10)
+	if err != nil {
+		http.Error(w, "error hashing password", http.StatusInternalServerError)
+		return
+	}
+
+	user.Password = string(hashedPassword)
+
 	err = DB.Create(&user).Error
 
 	if err != nil {
@@ -75,10 +91,9 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		"data":    user,
 	}
 
-	err = JSONResponse(w, http.StatusCreated, response)
-
-	if err != nil {
+	if err = JSONResponse(w, http.StatusCreated, response); err != nil {
 		log.Printf("error sending json response %v", err)
+
 	}
 
 }
@@ -105,8 +120,14 @@ func createNote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to create note", http.StatusBadRequest)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(note)
+	response := map[string]interface{}{
+		"message": "note created",
+		"data":    note,
+	}
+
+	if err = JSONResponse(w, http.StatusCreated, response); err != nil {
+		log.Printf("error sending json response %v", err)
+	}
 }
 
 func listNotes(w http.ResponseWriter, r *http.Request) {
