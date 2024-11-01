@@ -38,7 +38,7 @@ func main() {
 	})
 
 	// public routes
-	r.Route("api/v1/auth", func(r chi.Router) {
+	r.Route("/api/v1/auth", func(r chi.Router) {
 		r.Post("/register", createUser)
 	})
 
@@ -70,9 +70,23 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	response := map[string]interface{}{
+		"message": "user created",
+		"data":    user,
+	}
 
+	err = JSONResponse(w, http.StatusCreated, response)
+
+	if err != nil {
+		log.Printf("error sending json response %v", err)
+	}
+
+}
+
+func JSONResponse(w http.ResponseWriter, statusCode int, value any) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	return json.NewEncoder(w).Encode(value)
 }
 
 func createNote(w http.ResponseWriter, r *http.Request) {
