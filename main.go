@@ -32,12 +32,22 @@ func init() {
 func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("hello world!"))
 	})
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Post("/user", createUser)
-		r.Post("/notes", createNote)
+
+	// public routes
+	r.Route("api/v1/auth", func(r chi.Router) {
+		r.Post("/register", createUser)
+	})
+
+	r.Route("/api/v1/note", func(r chi.Router) {
+		r.Get("/", listNotes)
+		r.Get("/{id}", getNoteByID)
+		r.Post("/", createNote)
+		r.Put("/{id}", updateNote)
+		r.Delete("/{id}", deleteNote)
 	})
 
 	log.Println("server listening to port 3000")
@@ -83,4 +93,23 @@ func createNote(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(note)
+}
+
+func listNotes(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Listing all notes"))
+}
+
+func getNoteByID(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	w.Write([]byte("Getting note with ID: " + id))
+}
+
+func updateNote(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	w.Write([]byte("Updating note with ID: " + id))
+}
+
+func deleteNote(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	w.Write([]byte("Deleting note with ID: " + id))
 }
