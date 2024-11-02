@@ -30,7 +30,7 @@ func Router() http.Handler {
 			r.Get("/", handler.ListNotes)
 			r.Get("/{id}", handler.GetNoteByID)
 			r.Post("/", handler.CreateNote)
-			r.Put("/{id}", handler.UpdateNote)
+			r.Patch("/{id}", handler.UpdateNote)
 			r.Delete("/{id}", handler.DeleteNote)
 		})
 	})
