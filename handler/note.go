@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/depermana12/go-notes/auth"
 	"github.com/depermana12/go-notes/db"
 	"github.com/depermana12/go-notes/models"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/jwtauth/v5"
 	"gorm.io/gorm/clause"
 )
 
@@ -21,15 +21,13 @@ func JSONResponse(w http.ResponseWriter, statusCode int, value any) error {
 func CreateNote(w http.ResponseWriter, r *http.Request) {
 	var note models.Note
 
-	_, claims, _ := jwtauth.FromContext(r.Context())
-	userId, ok := claims["user_id"].(float64)
-	if !ok {
-		http.Error(w, "invalid user id", http.StatusUnauthorized)
+	userId, err := auth.GetIdFromAuthCtx(r)
+	if err != nil {
+		http.Error(w, "invalid user id authctx", http.StatusUnauthorized)
 		return
 	}
 
-	err := json.NewDecoder(r.Body).Decode(&note)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&note); err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -56,15 +54,13 @@ func CreateNote(w http.ResponseWriter, r *http.Request) {
 func ListNotes(w http.ResponseWriter, r *http.Request) {
 	var notes []models.Note
 
-	_, claims, _ := jwtauth.FromContext(r.Context())
-	userId, ok := claims["user_id"].(float64)
-	if !ok {
-		http.Error(w, "invalid user id", http.StatusUnauthorized)
+	userId, err := auth.GetIdFromAuthCtx(r)
+	if err != nil {
+		http.Error(w, "invalid user id authctx", http.StatusUnauthorized)
 		return
 	}
 
-	err := db.GetDB().Where("author_id = ?", userId).Find(&notes).Error
-	if err != nil {
+	if err := db.GetDB().Where("author_id = ?", userId).Find(&notes).Error; err != nil {
 		http.Error(w, "failed to get notes", http.StatusBadRequest)
 	}
 
@@ -81,17 +77,17 @@ func ListNotes(w http.ResponseWriter, r *http.Request) {
 func GetNoteByID(w http.ResponseWriter, r *http.Request) {
 	var note models.Note
 
-	_, claims, _ := jwtauth.FromContext(r.Context())
-	userId, ok := claims["user_id"].(float64)
-	if !ok {
-		http.Error(w, "invalid user id", http.StatusUnauthorized)
+	userId, err := auth.GetIdFromAuthCtx(r)
+	if err != nil {
+		http.Error(w, "invalid user id authctx", http.StatusUnauthorized)
 		return
 	}
 
 	id := chi.URLParam(r, "id")
-	err := db.GetDB().Where("author_id = ? AND id = ?", userId, id).First(&note).Error
-	if err != nil {
+
+	if err := db.GetDB().Where("author_id = ? AND id = ?", userId, id).First(&note).Error; err != nil {
 		http.Error(w, "failed to get notes", http.StatusBadRequest)
+		return
 	}
 
 	response := map[string]interface{}{
@@ -117,10 +113,9 @@ func UpdateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, claims, _ := jwtauth.FromContext(r.Context())
-	userId, ok := claims["user_id"].(float64)
-	if !ok {
-		http.Error(w, "invalid user id", http.StatusUnauthorized)
+	userId, err := auth.GetIdFromAuthCtx(r)
+	if err != nil {
+		http.Error(w, "invalid user id authctx", http.StatusUnauthorized)
 		return
 	}
 
@@ -153,17 +148,15 @@ func UpdateNote(w http.ResponseWriter, r *http.Request) {
 func DeleteNote(w http.ResponseWriter, r *http.Request) {
 	var note models.Note
 
-	_, claims, _ := jwtauth.FromContext(r.Context())
-	userId, ok := claims["user_id"].(float64)
-	if !ok {
-		http.Error(w, "invalid user id", http.StatusUnauthorized)
+	userId, err := auth.GetIdFromAuthCtx(r)
+	if err != nil {
+		http.Error(w, "invalid user id authctx", http.StatusUnauthorized)
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 
-	err := db.GetDB().Clauses(clause.Returning{}).Where("author_id = ? AND id = ?", uint(userId), id).Delete(&note).Error
-	if err != nil {
+	if err := db.GetDB().Clauses(clause.Returning{}).Where("author_id = ? AND id = ?", uint(userId), id).Delete(&note).Error; err != nil {
 		http.Error(w, "failed to delete note", http.StatusBadRequest)
 		return
 	}

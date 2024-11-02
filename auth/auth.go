@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"net/http"
+
 	"github.com/go-chi/jwtauth/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -22,6 +24,16 @@ func CreateJWT(userId uint, username string) (string, error) {
 	})
 
 	return token, err
+}
+
+func GetIdFromAuthCtx(r *http.Request) (uint, error) {
+	_, claims, err := jwtauth.FromContext(r.Context())
+	userId, ok := claims["user_id"].(float64)
+	if !ok {
+		return 0, err
+	}
+
+	return uint(userId), nil
 }
 
 func HashedPassword(password string) (string, error) {
