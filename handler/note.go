@@ -8,6 +8,7 @@ import (
 	"github.com/depermana12/go-notes/auth"
 	"github.com/depermana12/go-notes/db"
 	"github.com/depermana12/go-notes/models"
+	"github.com/depermana12/go-notes/service"
 	"github.com/go-chi/chi/v5"
 	"gorm.io/gorm/clause"
 )
@@ -32,19 +33,16 @@ func CreateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	note.AuthorId = uint(userId)
-
-	err = db.GetDB().Create(&note).Error
+	newNote, err := service.AddNote(userId, &note)
 	if err != nil {
 		http.Error(w, "failed to create note", http.StatusBadRequest)
+		return
 	}
 
 	response := map[string]interface{}{
 		"message": "note created",
-		"data":    note,
+		"data":    newNote,
 	}
-
-	fmt.Printf("error create  %v", response)
 
 	if err = JSONResponse(w, http.StatusCreated, response); err != nil {
 		fmt.Printf("error sending json response %v", err)

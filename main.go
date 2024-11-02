@@ -14,6 +14,8 @@ func init() {
 
 func main() {
 	addr := ":3000"
+	r := router.Router()
+
 	fmt.Printf("server listening on port %s", addr)
-	http.ListenAndServe(addr, router.Router())
+	http.ListenAndServe(addr, r)
 }
