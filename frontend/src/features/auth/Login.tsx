@@ -3,6 +3,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { InferType } from "yup";
 import api from "../../api/api";
+import useAuth from "./useAuth";
 
 const loginSchema = yup.object({
   email: yup.string().email().required(),
@@ -20,10 +21,13 @@ const Login = () => {
     resolver: yupResolver(loginSchema),
   });
 
+  const { login } = useAuth();
+
   const onSubmit = async (data: FormData) => {
     try {
-      const response = await api.post("/auth/register", data);
+      const response = await api.post("/auth/login", data);
       console.log(response.data);
+      login(response.data);
     } catch (error) {
       throw new Error("failed login");
     }
