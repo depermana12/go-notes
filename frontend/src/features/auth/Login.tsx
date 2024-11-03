@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { InferType } from "yup";
+import api from "../../api/api";
 
 const loginSchema = yup.object({
   email: yup.string().email().required(),
@@ -19,9 +20,13 @@ const Login = () => {
     resolver: yupResolver(loginSchema),
   });
 
-  const onSubmit = (data: FormData) => {
-    console.log(data);
-    console.log("hello");
+  const onSubmit = async (data: FormData) => {
+    try {
+      const response = await api.post("/auth/register", data);
+      console.log(response.data);
+    } catch (error) {
+      throw new Error("failed login");
+    }
   };
 
   return (
